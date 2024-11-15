@@ -1,4 +1,8 @@
-﻿using System;
+﻿using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
+using SeleniumExtras.WaitHelpers;
+using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -64,7 +68,12 @@ namespace Panel_C_
             public static void EnterText(IWebDriver driver, By locator, string text)
             {
                 driver.FindElement(locator).Clear();
-                driver.FindElement(locator).SendKeys(text);
+                //driver.FindElement(locator).SendKeys(text);
+                foreach (var character in text)
+                {
+                    driver.FindElement(locator).SendKeys(character.ToString());
+                    Thread.Sleep(new Random().Next(100,300));
+                }
             }
         }
 
@@ -466,15 +475,18 @@ namespace Panel_C_
                             }
                         }
                     }
-                    ChromeOptions options = new ChromeOptions();
-                    options.AddUserProfilePreference("profile.managed_default_content_settings.images", 2);  // Görsel yüklemesini devre dışı bırak
-                    options.AddArgument("--disable-blink-features=AutomationControlled"); // Bot tespitini azaltmak için gerçek tarayıcı kullancak
+                    var options = new ChromeOptions();
+                    options.AddArgument("--start-maximized");
+                    options.AddArgument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36");
+                    options.AddUserProfilePreference("profile.managed_default_content_settings.images", 2); // Görseller devre dışı
                     Random rnd = new Random();    //Rasgele sayı üretmek için
                     int waitTime = rnd.Next(2000, 5000);   //2 ile 5 saniye arası rasgele süre tut (İşlemler arası bot algılamasını azaltma için)
                     int waitTimeLogin = rnd.Next(5000, 10000);    //5 ile 10 saniye arası rasgele süre tut (Giriş bekleme arası bot algılamasını azaltma için)
-                    int rnd_number = rnd.Next(msj_chkbox.CheckedItems.Count);   //yorumları rasgele seçmek için seçili yorum kadar rasgele sayı üret
                     int wrongLoginCount = 0;
-                    driver = new ChromeDriver(options);     //Tarayıcıyı aç
+                    driver = new ChromeDriver(options);     //Tarayıcıyı aç       
+                    var jsExecutor = (IJavaScriptExecutor)driver;
+                    // Bot algısını engelle
+                    jsExecutor.ExecuteScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
                     driver.Navigate().GoToUrl("https://www.instagram.com/accounts/login/");   //Giriş yapabilmek için Instagram giriş sayfasına gidilir
                     driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);     //10 sn içinde sayfa yüklenmesini bekle
                     for (int i = 0; i <= kln_toplam - 1; i++)
@@ -530,7 +542,8 @@ namespace Panel_C_
                                     {
                                         if (i <= Convert.ToInt32(yrm_syc_txt.Text))
                                         {
-                                            string message = msj_chkbox.Items[rnd_number].ToString();
+                                            int rnd_number = rnd.Next(msj_chkbox.CheckedItems.Count);   //yorumları rasgele seçmek için seçili yorum kadar rasgele sayı üret
+                                            string message = msj_chkbox.CheckedItems[rnd_number].ToString();
                                             SendMessage(driver, message);
                                             Thread.Sleep(waitTime);
                                         }
@@ -549,7 +562,8 @@ namespace Panel_C_
                                 {
                                     if (i <= Convert.ToInt32(yrm_syc_txt.Text))
                                     {
-                                        string message = msj_chkbox.Items[rnd_number].ToString();
+                                        int rnd_number = rnd.Next(msj_chkbox.CheckedItems.Count);   //yorumları rasgele seçmek için seçili yorum kadar rasgele sayı üret
+                                        string message = msj_chkbox.CheckedItems[rnd_number].ToString();
                                         SendMessage(driver, message);
                                         Thread.Sleep(waitTime);
                                     }
@@ -591,6 +605,14 @@ namespace Panel_C_
                 else
                     MessageBox.Show("Önce Yapılmasını İstediğiniz İşlemleri Seçiniz.", "UYARI", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            Random random = new Random();
+            int rnd_number = random.Next(msj_chkbox.CheckedItems.Count);
+            MessageBox.Show(Convert.ToString(rnd_number));
+            MessageBox.Show(msj_chkbox.CheckedItems[rnd_number].ToString());
         }
     }
 }
