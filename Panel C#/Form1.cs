@@ -3,22 +3,18 @@ using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using SeleniumExtras.WaitHelpers;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
-using SeleniumExtras.WaitHelpers;
 
 namespace Panel_C_
 {
     public partial class Form1 : Form
     {
-        IWebDriver driver;
         //Bu iki değişken kayıt edip etmediğini kontrol etmek için
         private bool isTextBoxSaved = false;
         private bool isCheckboxListSaved = false;
@@ -44,17 +40,96 @@ namespace Panel_C_
             }
         }
 
+        public class ChromeManager
+        {
+            private static string changeUserAgent = string.Empty;
+            private Random rnd = new Random();
+            private IWebDriver driver;
+            // Rasgele User-Agent seç
+            public string GetRandomUserAgent()
+            {
+                string UserAgentFilePath = @"..\..\Resources\user-agents.txt";
+                List<string> UserAgent = new List<string>(File.ReadAllLines(UserAgentFilePath));
+                // Rasgele seç ve ata
+                int randomIndex = rnd.Next(UserAgent.Count);
+                changeUserAgent = UserAgent[randomIndex];
+                return changeUserAgent;
+            }
+            // Tarayıcıyı başlat
+            public IWebDriver StartBrowser()
+            {
+                string userAgent = GetRandomUserAgent();
+                ChromeOptions options = new ChromeOptions();
+                // User-Agent ayarla
+                options.AddArgument($"--user-agent={userAgent}");
+                // Proxy ekle 
+                options.AddExtension(@"C:\Users\esmat\source\repos\esmatyfr\PanelC-\Panel C#\bin\Debug\proxy_auth_extension.zip");
+                // Şifre kaydetme ve otomasyon algılamayı devre dışı bırak
+                options.AddUserProfilePreference("credentials_enable_service", false);
+                options.AddUserProfilePreference("profile.password_manager_enabled", false);
+                options.AddExcludedArgument("enable-automation");
+                options.AddArgument("--disable-blink-features=AutomationControlled");
+                // Çerezleri engelle
+                //options.AddUserProfilePreference("profile.default_content_setting_values.cookies", 2);
+                //options.AddUserProfilePreference("profile.block_third_party_cookies", true);
+                // Tarayıcı ayarları
+                options.AddArgument("--start-maximized"); // Tam ekran aç
+                options.AddArguments("--disable-web-security");
+                options.AddArguments("--no-sandbox");
+                options.AddArguments("--disable-gpu");  // GPU'yu devre dışı bırak (tarayıcı hızlandırma için)
+                options.AddArguments("--disable-dev-shm-usage");    // Bellek kullanımı optimizasyonu
+                // Görselleri devre dışı bırak
+                options.AddUserProfilePreference("profile.managed_default_content_settings.images", 2);
+                // Tarayıcıyı başlat
+                driver = new ChromeDriver(options);
+                //Otomasyon algılamayı gizle
+                IJavaScriptExecutor jsExecutor = (IJavaScriptExecutor)driver;
+                jsExecutor.ExecuteScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+                // Python'daki Stealth ayarları için benzer şekilde manuel yapılandırmalar yapılabilir.
+                // Dil, platform ve diğer özellikler genellikle tarayıcı özelliklerini ayarlamak için kullanılır.
+                jsExecutor.ExecuteScript("navigator.language = 'tr-TR';");
+                jsExecutor.ExecuteScript("navigator.vendor = 'Google Inc.';");
+                jsExecutor.ExecuteScript("navigator.platform = 'Win32';");
+                jsExecutor.ExecuteScript("WebGLRenderingContext.prototype.getParameter = function(){ return null; };"); // WebGL manipülasyonu
+
+                return driver;
+            }
+            // Çerez Penceresini Kapat
+            public void CloseCookiesBanner()
+            {
+                try
+                {
+                    IWebElement acceptCookies = driver.FindElement(By.XPath("//button[contains(text(),'Tüm çerezlere izin ver')]"));
+                    acceptCookies.Click();
+                    Console.WriteLine("Çerez penceresi kapatıldı.");
+                }
+                catch (NoSuchElementException)
+                {
+                    Console.WriteLine("Çerez penceresi bulunamadı, devam ediliyor.");
+                }
+            }
+            // Tarayıcıyı düzgün şekilde kapatma
+            public void CloseBrowser()
+            {
+                if (driver != null)
+                {
+                    driver.Quit();
+                    driver = null;  // driver nesnesini null yaparak tekrar kullanımı engelle
+                }
+            }
+        }
+
         // Dinamik bekleme fonksiyonu
-        private static void WaitForElement(IWebDriver driver, string xpath)
+        private static void WaitForElement(IWebDriver driver, By locator)
         {
             try
             {
-                WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-                wait.Until(ExpectedConditions.ElementIsVisible(By.XPath(xpath)));
+                WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(8));
+                wait.Until(ExpectedConditions.ElementIsVisible(locator));
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Element not found: {xpath}", ex);
+                Logger.LogError($"Element not found: {locator}", ex);
             }
         }
 
@@ -68,11 +143,10 @@ namespace Panel_C_
             public static void EnterText(IWebDriver driver, By locator, string text)
             {
                 driver.FindElement(locator).Clear();
-                //driver.FindElement(locator).SendKeys(text);
                 foreach (var character in text)
                 {
                     driver.FindElement(locator).SendKeys(character.ToString());
-                    Thread.Sleep(new Random().Next(100,300));
+                    Thread.Sleep(new Random().Next(50, 200));
                 }
             }
         }
@@ -82,14 +156,15 @@ namespace Panel_C_
         {
             try
             {
-                WaitForElement(driver, "//*[@id=\"loginForm\"]/div/div[1]/div/label/input");
-                SeleniumCustomMethods.EnterText(driver, By.XPath("//*[@id=\"loginForm\"]/div/div[1]/div/label/input"), username);
+                WaitForElement(driver, By.Name("username"));
+                SeleniumCustomMethods.EnterText(driver, By.Name("username"), username);
+                // //*[@id="loginForm"]/div[1]/div[3]/div/label/input
 
-                WaitForElement(driver, "//*[@id=\"loginForm\"]/div/div[2]/div/label/input");
-                SeleniumCustomMethods.EnterText(driver, By.XPath("//*[@id=\"loginForm\"]/div/div[2]/div/label/input"), password);
+                WaitForElement(driver, By.Name("password"));
+                SeleniumCustomMethods.EnterText(driver, By.Name("password"), password);
 
-                WaitForElement(driver, "//*[@id=\"loginForm\"]/div/div[3]/button");
-                SeleniumCustomMethods.Click(driver, By.XPath("//*[@id=\"loginForm\"]/div/div[3]/button"));
+                WaitForElement(driver, By.XPath("//button[.//div[text()='Giriş yap']"));
+                SeleniumCustomMethods.Click(driver, By.XPath("//button[.//div[text()='Giriş yap']"));
             }
             catch (Exception ex)
             {
@@ -102,9 +177,9 @@ namespace Panel_C_
         {
             try
             {
-                WaitForElement(driver, "//div[text()='Takip Et']");
+                WaitForElement(driver, By.XPath("//div[text()='Takip Et']"));
                 SeleniumCustomMethods.Click(driver, By.XPath("//div[text()='Takip Et']"));
-                WaitForElement(driver, "//div[text()='Takiptesin']");
+                WaitForElement(driver, By.XPath("//div[text()='Takiptesin']"));
             }
             catch (NoSuchElementException ex)
             {
@@ -120,7 +195,7 @@ namespace Panel_C_
         {
             try
             {
-                WaitForElement(driver, "//textarea[@class='x1i0vuye xvbhtw8 x1ejq31n xd10rxx x1sy0etr x17r0tee x5n08af x78zum5 x1iyjqo2 x1qlqyl8 x1d6elog xlk1fp6 x1a2a7pz xexx8yu x4uap5 x18d9i69 xkhd6sd xtt52l0 xnalus7 xs3hnx8 x1bq4at4 xaqnwrm']");
+                WaitForElement(driver, By.XPath("//textarea[@class='x1i0vuye xvbhtw8 x1ejq31n xd10rxx x1sy0etr x17r0tee x5n08af x78zum5 x1iyjqo2 x1qlqyl8 x1d6elog xlk1fp6 x1a2a7pz xexx8yu x4uap5 x18d9i69 xkhd6sd xtt52l0 xnalus7 xs3hnx8 x1bq4at4 xaqnwrm']"));
                 SeleniumCustomMethods.Click(driver, By.XPath("//textarea[@class='x1i0vuye xvbhtw8 x1ejq31n xd10rxx x1sy0etr x17r0tee x5n08af x78zum5 x1iyjqo2 x1qlqyl8 x1d6elog xlk1fp6 x1a2a7pz xexx8yu x4uap5 x18d9i69 xkhd6sd xtt52l0 xnalus7 xs3hnx8 x1bq4at4 xaqnwrm']"));
                 SeleniumCustomMethods.EnterText(driver, By.XPath("//textarea[@class='x1i0vuye xvbhtw8 x1ejq31n xd10rxx x1sy0etr x17r0tee x5n08af x78zum5 x1iyjqo2 x1qlqyl8 x1d6elog xlk1fp6 x1a2a7pz xexx8yu x4uap5 x18d9i69 xkhd6sd xtt52l0 xnalus7 xs3hnx8 x1bq4at4 xaqnwrm focus-visible']"), message);
                 driver.FindElement(By.XPath("//textarea[@class='x1i0vuye xvbhtw8 x1ejq31n xd10rxx x1sy0etr x17r0tee x5n08af x78zum5 x1iyjqo2 x1qlqyl8 x1d6elog xlk1fp6 x1a2a7pz xexx8yu x4uap5 x18d9i69 xkhd6sd xtt52l0 xnalus7 xs3hnx8 x1bq4at4 xaqnwrm focus-visible']")).SendKeys(OpenQA.Selenium.Keys.Return);
@@ -139,7 +214,7 @@ namespace Panel_C_
         {
             try
             {
-                WaitForElement(driver, "//span[@class='xp7jhwk']");
+                WaitForElement(driver, By.XPath("//span[@class='xp7jhwk']"));
                 SeleniumCustomMethods.Click(driver, By.XPath("//span[@class='xp7jhwk']"));
                 SeleniumCustomMethods.Click(driver, By.XPath("//span[@class='xp7jhwk']"));
             }
@@ -475,49 +550,66 @@ namespace Panel_C_
                             }
                         }
                     }
-                    var options = new ChromeOptions();
-                    options.AddArgument("--start-maximized");
-                    options.AddArgument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36");
-                    options.AddUserProfilePreference("profile.managed_default_content_settings.images", 2); // Görseller devre dışı
                     Random rnd = new Random();    //Rasgele sayı üretmek için
-                    int waitTime = rnd.Next(2000, 5000);   //2 ile 5 saniye arası rasgele süre tut (İşlemler arası bot algılamasını azaltma için)
-                    int waitTimeLogin = rnd.Next(5000, 10000);    //5 ile 10 saniye arası rasgele süre tut (Giriş bekleme arası bot algılamasını azaltma için)
                     int wrongLoginCount = 0;
-                    driver = new ChromeDriver(options);     //Tarayıcıyı aç       
-                    var jsExecutor = (IJavaScriptExecutor)driver;
-                    // Bot algısını engelle
-                    jsExecutor.ExecuteScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
-                    driver.Navigate().GoToUrl("https://www.instagram.com/accounts/login/");   //Giriş yapabilmek için Instagram giriş sayfasına gidilir
-                    driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);     //10 sn içinde sayfa yüklenmesini bekle
+                    ChromeManager chromeManager = new ChromeManager();
+                    IWebDriver driver = null;
                     for (int i = 0; i <= kln_toplam - 1; i++)
                     {
+                        int waitTime = rnd.Next(2000, 5000);   //2 ile 5 saniye arası rasgele süre tut (İşlemler arası bot algılamasını azaltma için)
+                        int waitTimeLogin = rnd.Next(10000, 15000);    //10 ile 15 saniye arası rasgele süre tut (Giriş bekleme arası bot algılamasını azaltma için)
+                        string name = kln_txt.Lines[i];
+                        string password = sfr_txt.Lines[i];
+
+                        // Eğer i çift ise, tarayıcıyı kapatıp yenisini başlat
+                        if (i % 2 == 0)
+                        {
+                            // Eğer mevcutta bir tarayıcı varsa, kapat
+                            if (driver != null)
+                            {
+                                chromeManager.CloseBrowser();
+                            }
+
+                            // Yeni bir tarayıcı başlat
+                            driver = chromeManager.StartBrowser();
+                        }
                         int j = i - 1;
                         syc_lbl.Text = "Toplam Hesap: " + kln_toplam + " Tamamlanan hesaplar: " + j;
+                        driver.Navigate().GoToUrl("https://www.instagram.com/accounts/login/");   //Giriş yapabilmek için Instagram giriş sayfasına gidilir
+                        driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(15);     //15 sn içinde sayfa yüklenmesini bekle
                         Login(driver, kln_txt.Lines[i], sfr_txt.Lines[i]);
+                        //driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);     //10 sn içinde sayfa yüklenmesini bekle
                         Thread.Sleep(waitTimeLogin);    //Giriş yapılıp yapılmadığını anlamak ve bot olduğu anlaşılmasını zorlamak
-                        bool LoginCheck = driver.FindElements(By.XPath("//*[@id=\"loginForm\"]/div/div[3]/button")).Count > 0;  //Eğer halen giriş yap var ise true ol
-                        if (LoginCheck == true)
+                        // Şifre hatalı mı?
+                        bool isWrongPassword = driver.FindElements(By.XPath("//button[.//div[text()='Giriş yap']")).Count > 0;
+                        // Doğrulama istiyor mu? (URL kontorolü yap)
+                        bool isWrongVerification = driver.Url.StartsWith("https://www.instagram.com/auth_platform/codeentry/");
+
+                        if (isWrongPassword || isWrongVerification)
                         {
-                            string name = kln_txt.Lines[i];
-                            string password = sfr_txt.Lines[i];
-                            driver.Navigate().GoToUrl("https://www.instagram.com/accounts/logout/");   //Nolur ne olmaz çıkış işlemi gecekleştirelim.
-                            driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-                            string directory = Path.GetDirectoryName(filePath);
-                            if (!string.IsNullOrEmpty(directory))    // Dizini al ve eğer null değilse oluştur
+                            driver.Navigate().GoToUrl("https://www.instagram.com/accounts/logout/");   //Güvrnlik için çıkış ysp   //Nolur ne olmaz çıkış işlemi gecekleştirelim.
+                            driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(15);
+                            if (report == DialogResult.Yes)
                             {
-                                Directory.CreateDirectory(directory);   // Dizini oluştur
+                                string directory = Path.GetDirectoryName(filePath);
+                                if (!string.IsNullOrEmpty(directory))    // Dizini al ve eğer null değilse oluştur
+                                {
+                                    Directory.CreateDirectory(directory);   // Dizini oluştur
+                                }
+                                // Hata mesajını belirle
+                                string errorMassega = isWrongPassword
+                                    ? "Giriş yapılamadı, şifre hatalı"
+                                    : "Doğrulama istiyor, giriş başarısız";
+                                // Dosyaya yaz
+                                using (StreamWriter sw = new StreamWriter(filePath, true)) // 'true' append modunda açar
+                                {
+                                    sw.WriteLine($"{name} - {password} - {errorMassega}"); // İsim, şifreyi ve sorunu yan yana yaz
+                                }
                             }
-                            // Dosyayı oluştur ve kullanıcı bilgilerini yaz
-                            using (StreamWriter sw = new StreamWriter(filePath, true)) // 'true' append modunda açar
-                            {
-                                sw.WriteLine($"{name} - {password}"); // İsim ve şifreyi yan yana yaz
-                            }
-                            LoginCheck = false;
-                            wrongLoginCount++;
+                            wrongLoginCount++;  // Yanlış giriş sayaçını arttır
                         }
                         else
                         {
-
                             driver.Navigate().GoToUrl(insta_txt.Text);
                             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
                             if (gnd_cmbbox.SelectedIndex == 0)
@@ -529,7 +621,7 @@ namespace Panel_C_
                                 }
                                 if (bgn_ckb.Checked == true || yrm_ckb.Checked == true)
                                 {
-                                    WaitForElement(driver, "//div[@class='_aagw']");
+                                    WaitForElement(driver, By.XPath("//div[@class='_aagw']"));
                                     SeleniumCustomMethods.Click(driver, By.XPath("//div[@class='_aagw']"));
                                     driver.Navigate().Refresh();
                                     driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
@@ -547,7 +639,6 @@ namespace Panel_C_
                                             SendMessage(driver, message);
                                             Thread.Sleep(waitTime);
                                         }
-
                                     }
                                 }
                             }
@@ -580,7 +671,11 @@ namespace Panel_C_
                             driver.Navigate().GoToUrl("https://www.instagram.com/accounts/logout/");
                         }
                     }
-                    driver.Quit();
+                    // İşlem tamamlandı tarayıcıyı kapat
+                    if (driver != null)
+                    {
+                        chromeManager.CloseBrowser();
+                    }
                     syc_lbl.Text = "Tamamlanan Hesaplar: " + kln_toplam + " Giriş Yapılamayanlar:" + wrongLoginCount;
                     if (report == DialogResult.Yes)
                     {
@@ -606,14 +701,5 @@ namespace Panel_C_
                     MessageBox.Show("Önce Yapılmasını İstediğiniz İşlemleri Seçiniz.", "UYARI", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
         }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            Random random = new Random();
-            int rnd_number = random.Next(msj_chkbox.CheckedItems.Count);
-            MessageBox.Show(Convert.ToString(rnd_number));
-            MessageBox.Show(msj_chkbox.CheckedItems[rnd_number].ToString());
-        }
     }
 }
-
