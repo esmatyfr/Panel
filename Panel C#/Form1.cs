@@ -143,11 +143,7 @@ namespace Panel_C_
             public static void EnterText(IWebDriver driver, By locator, string text)
             {
                 driver.FindElement(locator).Clear();
-                foreach (var character in text)
-                {
-                    driver.FindElement(locator).SendKeys(character.ToString());
-                    Thread.Sleep(new Random().Next(50, 200));
-                }
+                driver.FindElement(locator).SendKeys(text);
             }
         }
 
@@ -550,10 +546,14 @@ namespace Panel_C_
                             }
                         }
                     }
+                    // ChromeManager sınıfını oluştur
+                    ChromeManager chromeManager = new ChromeManager();
                     Random rnd = new Random();    //Rasgele sayı üretmek için
                     int wrongLoginCount = 0;
-                    ChromeManager chromeManager = new ChromeManager();
-                    IWebDriver driver = null;
+                    // Tarayıcıyı başlat (proxy uzantısı otomatik eklenecek)
+                    IWebDriver driver = chromeManager.StartBrowser();
+                    driver.Navigate().GoToUrl("https://www.instagram.com/accounts/login/");   //Giriş yapabilmek için Instagram giriş sayfasına gidilir
+                    driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);     //10 sn içinde sayfa yüklenmesini bekle
                     for (int i = 0; i <= kln_toplam - 1; i++)
                     {
                         int waitTime = rnd.Next(2000, 5000);   //2 ile 5 saniye arası rasgele süre tut (İşlemler arası bot algılamasını azaltma için)
@@ -634,8 +634,7 @@ namespace Panel_C_
                                     {
                                         if (i <= Convert.ToInt32(yrm_syc_txt.Text))
                                         {
-                                            int rnd_number = rnd.Next(msj_chkbox.CheckedItems.Count);   //yorumları rasgele seçmek için seçili yorum kadar rasgele sayı üret
-                                            string message = msj_chkbox.CheckedItems[rnd_number].ToString();
+                                            string message = msj_chkbox.CheckedItems[i-1].ToString();
                                             SendMessage(driver, message);
                                             Thread.Sleep(waitTime);
                                         }
@@ -653,8 +652,7 @@ namespace Panel_C_
                                 {
                                     if (i <= Convert.ToInt32(yrm_syc_txt.Text))
                                     {
-                                        int rnd_number = rnd.Next(msj_chkbox.CheckedItems.Count);   //yorumları rasgele seçmek için seçili yorum kadar rasgele sayı üret
-                                        string message = msj_chkbox.CheckedItems[rnd_number].ToString();
+                                        string message = msj_chkbox.CheckedItems[i - 1].ToString();
                                         SendMessage(driver, message);
                                         Thread.Sleep(waitTime);
                                     }
