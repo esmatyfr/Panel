@@ -698,13 +698,5 @@ namespace Panel_C_
                     MessageBox.Show("Önce Yapılmasını İstediğiniz İşlemleri Seçiniz.", "UYARI", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
         }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            ChromeManager chromeManager = new ChromeManager();
-            IWebDriver driver = chromeManager.StartBrowser();
-            driver.Navigate().GoToUrl("chrome://settings/help");
-            Thread.Sleep(20);
-        }
     }
 }

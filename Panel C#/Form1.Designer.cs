@@ -55,7 +55,6 @@
             this.bgn_ckb = new System.Windows.Forms.CheckBox();
             this.yrm_ckb = new System.Windows.Forms.CheckBox();
             this.tkp_ckb = new System.Windows.Forms.CheckBox();
-            this.button1 = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // kln_lbl
@@ -343,16 +342,6 @@
             this.tkp_ckb.TabIndex = 26;
             this.tkp_ckb.UseVisualStyleBackColor = true;
             // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(548, 378);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 27;
-            this.button1.Text = "button1";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -360,7 +349,6 @@
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.BackColor = System.Drawing.Color.Navy;
             this.ClientSize = new System.Drawing.Size(667, 571);
-            this.Controls.Add(this.button1);
             this.Controls.Add(this.tkp_ckb);
             this.Controls.Add(this.yrm_ckb);
             this.Controls.Add(this.bgn_ckb);
@@ -425,7 +413,6 @@
         private System.Windows.Forms.CheckBox bgn_ckb;
         private System.Windows.Forms.CheckBox yrm_ckb;
         private System.Windows.Forms.CheckBox tkp_ckb;
-        private System.Windows.Forms.Button button1;
     }
 }
 
