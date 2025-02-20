@@ -74,8 +74,8 @@ namespace Panel_C_
                 //options.AddUserProfilePreference("profile.block_third_party_cookies", true);
                 // Tarayıcı ayarları
                 options.AddArgument("--start-maximized"); // Tam ekran aç
-                options.AddArguments("--disable-web-security");
-                options.AddArguments("--no-sandbox");
+                //options.AddArguments("--disable-web-security");
+                //options.AddArguments("--no-sandbox");
                 options.AddArguments("--disable-gpu");  // GPU'yu devre dışı bırak (tarayıcı hızlandırma için)
                 options.AddArguments("--disable-dev-shm-usage");    // Bellek kullanımı optimizasyonu
                 // Görselleri devre dışı bırak
@@ -143,7 +143,11 @@ namespace Panel_C_
             public static void EnterText(IWebDriver driver, By locator, string text)
             {
                 driver.FindElement(locator).Clear();
-                driver.FindElement(locator).SendKeys(text);
+                foreach (var character in text)
+                {
+                    driver.FindElement(locator).SendKeys(character.ToString());
+                    Thread.Sleep(new Random().Next(50, 200));
+                }
             }
         }
 
@@ -160,7 +164,7 @@ namespace Panel_C_
                 SeleniumCustomMethods.EnterText(driver, By.Name("password"), password);
 
                 WaitForElement(driver, By.XPath("//button[.//div[text()='Giriş yap']"));
-                SeleniumCustomMethods.Click(driver, By.XPath("//button[.//div[text()='Giriş yap']"));
+                SeleniumCustomMethods.Click(driver, By.XPath("//button[div[text()='Giriş yap']]"));
             }
             catch (Exception ex)
             {
@@ -550,19 +554,14 @@ namespace Panel_C_
                     ChromeManager chromeManager = new ChromeManager();
                     Random rnd = new Random();    //Rasgele sayı üretmek için
                     int wrongLoginCount = 0;
-                    // Tarayıcıyı başlat (proxy uzantısı otomatik eklenecek)
-                    IWebDriver driver = chromeManager.StartBrowser();
-                    driver.Navigate().GoToUrl("https://www.instagram.com/accounts/login/");   //Giriş yapabilmek için Instagram giriş sayfasına gidilir
-                    driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);     //10 sn içinde sayfa yüklenmesini bekle
+                    IWebDriver driver = null;
                     for (int i = 0; i <= kln_toplam - 1; i++)
                     {
                         int waitTime = rnd.Next(2000, 5000);   //2 ile 5 saniye arası rasgele süre tut (İşlemler arası bot algılamasını azaltma için)
                         int waitTimeLogin = rnd.Next(10000, 15000);    //10 ile 15 saniye arası rasgele süre tut (Giriş bekleme arası bot algılamasını azaltma için)
                         string name = kln_txt.Lines[i];
                         string password = sfr_txt.Lines[i];
-
-                        // Eğer i çift ise, tarayıcıyı kapatıp yenisini başlat
-                        if (i % 2 == 0)
+                        if (i % 2 == 0)        // Eğer i çift ise, tarayıcıyı kapatıp yenisini başlat
                         {
                             // Eğer mevcutta bir tarayıcı varsa, kapat
                             if (driver != null)
@@ -581,7 +580,7 @@ namespace Panel_C_
                         //driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);     //10 sn içinde sayfa yüklenmesini bekle
                         Thread.Sleep(waitTimeLogin);    //Giriş yapılıp yapılmadığını anlamak ve bot olduğu anlaşılmasını zorlamak
                         // Şifre hatalı mı?
-                        bool isWrongPassword = driver.FindElements(By.XPath("//button[.//div[text()='Giriş yap']")).Count > 0;
+                        bool isWrongPassword = driver.FindElements(By.XPath("//button[div[text()='Giriş yap']]")).Count > 0;
                         // Doğrulama istiyor mu? (URL kontorolü yap)
                         bool isWrongVerification = driver.Url.StartsWith("https://www.instagram.com/auth_platform/codeentry/");
 
@@ -698,6 +697,14 @@ namespace Panel_C_
                 else
                     MessageBox.Show("Önce Yapılmasını İstediğiniz İşlemleri Seçiniz.", "UYARI", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            ChromeManager chromeManager = new ChromeManager();
+            IWebDriver driver = chromeManager.StartBrowser();
+            driver.Navigate().GoToUrl("chrome://settings/help");
+            Thread.Sleep(20);
         }
     }
 }
